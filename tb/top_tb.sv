@@ -35,6 +35,7 @@ initial
     rst_done = 1'b1;
   end
 
+// size with CRC  
 task set_size( input int _addr, int _size );
   wr_size_addr  <= _addr;
   wr_size_data  <= _size;
@@ -85,9 +86,9 @@ initial
   end
 
 
-pkt_gen_task_engine #(
+pkt_gen_top #(
   .FLOW_CNT                               ( FLOW_CNT        )
-) gen_task_engine (
+) gen_task_top (
   .clk_i                                  ( clk             ),
   .rst_i                                  ( rst             ),
 
@@ -103,13 +104,8 @@ pkt_gen_task_engine #(
     
   .wr_flow_en_addr_i                      ( wr_flow_en_addr ),
   .wr_flow_en_data_i                      ( wr_flow_en_data ),
-  .wr_flow_en_wr_en_i                     ( wr_flow_en_wr_en),
+  .wr_flow_en_wr_en_i                     ( wr_flow_en_wr_en)
 
-    // to task fifo
-  .task_flow_num_o                        (    ),
-  .task_pkt_size_o                        (    ),
-  .task_valid_o                           (    ),
-  .task_ready_i                           ( 1'b1   )
 );
 
 

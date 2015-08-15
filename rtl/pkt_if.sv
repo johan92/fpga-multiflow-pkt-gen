@@ -35,14 +35,14 @@ modport slave(
 );
 
 // synthesis translate_off
-clocking cb @( posedge clk );
-  output data;
-  output sop;
-  output eop;
-  output empty;
-  output val;
-  output flow_num;
-endclocking
+//clocking cb @( posedge clk );
+//  output data;
+//  output sop;
+//  output eop;
+//  output empty;
+//  output val;
+//  output flow_num;
+//endclocking
 
 int  tick_cnt;
 int  cur_bytes_l1;
@@ -56,10 +56,9 @@ initial
         tick_cnt = tick_cnt + 1'd1;
         
         // 20 - IFG ( 12 IDLE + 8 Preamble )
-        // 4  - CRC
-        cur_bytes_l1 = cb.val ? ( cb.eop ? ( D_WIDTH - cb.empty + 20 + 4 ) : ( D_WIDTH ) ) : ( 0 );
+        cur_bytes_l1 = val ? ( eop ? ( D_WIDTH - empty + 20 ) : ( D_WIDTH ) ) : ( 0 );
 
-        flow_total_bytes_cnt[ cb.flow_num ] += cur_bytes_l1;
+        flow_total_bytes_cnt[ flow_num ] += cur_bytes_l1;
 
         for( int i = 0; i < FLOW_CNT; i++ )
           begin

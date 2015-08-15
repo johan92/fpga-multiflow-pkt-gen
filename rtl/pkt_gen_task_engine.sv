@@ -185,7 +185,7 @@ assign token_rd_addr    = update_rd_addr;
 
 
 // setting task
-assign task_flow_num_o = scheduler_rd_addr_d1; 
+assign task_flow_num_o = bucket_rd_addr_d1; 
 assign task_pkt_size_o = rd_pkt_size;
 assign task_valid_o    = scheduler_wr_en;
 // FIXME: ready

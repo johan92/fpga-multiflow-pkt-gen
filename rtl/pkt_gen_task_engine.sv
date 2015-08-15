@@ -1,8 +1,7 @@
 module pkt_gen_task_engine #(
-  parameter FLOW_CNT      = 16,
+  parameter FLOW_CNT        = 16,
 
-  parameter UPDATE_PERIOD = 100,
-
+  parameter UPDATE_PERIOD   = 100,
 
   // internal parameter
   parameter FLOW_CNT_WIDTH  = ( FLOW_CNT == 1 ) ? ( 1 ) : $clog2( FLOW_CNT )
@@ -64,6 +63,8 @@ logic [UPDATE_CNT_WIDTH-1:0] update_cnt;
 logic                        need_update;
 logic                        update_done; 
 
+logic                        flow_can_gen_pkt;
+
 enum int unsigned {
   SCHEDULER_S,
   UPDATE_S
@@ -97,6 +98,8 @@ always_comb
     endcase
   end
 
+
+// SCHEDULER LOGIC  
 always_ff @( posedge clk_i or posedge rst_i )
   if( rst_i )
     scheduler_rd_addr <= '0;
@@ -104,7 +107,7 @@ always_ff @( posedge clk_i or posedge rst_i )
     if( scheduler_rd_en )
       scheduler_rd_addr <= scheduler_rd_addr + 1'd1;
 
-assign scheduler_rd_en = ( next_state == SCHEDULER_S );
+assign scheduler_rd_en = ( state == SCHEDULER_S ) && ( next_state == SCHEDULER_S );
 
 always_ff @( posedge clk_i or posedge rst_i )
   if( rst_i )
@@ -112,8 +115,47 @@ always_ff @( posedge clk_i or posedge rst_i )
   else
     scheduler_rd_en_d1 <= scheduler_rd_en;
 
-assign scheduler_wr_en = scheduler_rd_en_d1;  
-  
+assign scheduler_wr_en = flow_can_gen_pkt && scheduler_rd_en_d1;  
+
+
+// UPDATE LOGIC                                               
+assign update_rd_en = ( state == UPDATE_S ) && ( next_state == UPDATE_S );
+
+always_ff @( posedge clk_i or posedge rst_i )
+  if( rst_i )
+    update_rd_en_d1 <= 1'b0;
+  else
+    update_rd_en_d1 <= update_rd_en;
+
+always_ff @( posedge clk_i or posedge rst_i )
+  if( rst_i )
+    update_rd_addr <= '0;
+  else
+    if( update_done )
+      update_rd_addr <= '0;
+    else
+      if( update_rd_en )
+        update_rd_addr <= update_rd_addr + 1'd1;
+
+assign update_done  = ( update_rd_addr == '1 );
+assign update_wr_en = update_rd_en_d1;
+
+assign need_update = ( update_cnt == ( UPDATE_PERIOD - 1 ) );
+
+always_ff @( posedge clk_i or posedge rst_i )
+  if( rst_i )
+    update_cnt <= '0;
+  else
+    if( need_update )
+      update_cnt <= '0;
+    else
+      update_cnt <= update_cnt + 1'd1;
+
+
+// COMMON
+assign bucket_rd_addr = ( state == SCHEDULER_S ) ? ( scheduler_rd_addr ):
+                                                   ( update_rd_addr    );
+
 always_ff @( posedge clk_i or posedge rst_i )
   if( rst_i )
     bucket_rd_addr_d1 <= '0;
@@ -122,15 +164,13 @@ always_ff @( posedge clk_i or posedge rst_i )
 
 assign bucket_wr_addr = bucket_rd_addr_d1;
 
-logic flow_can_gen_pkt;
-
-assign flow_can_gen_pkt = bucket_rd_data >= rd_pkt_size;
+assign flow_can_gen_pkt = bucket_rd_data > rd_pkt_size;
 
 always_comb
   begin
     bucket_wr_data = bucket_rd_data;
 
-    if( state == SCHEDULER_S )
+    if( state == UPDATE_S )
       bucket_wr_data = ( bucket_rd_data + rd_token );
     else
       if( flow_can_gen_pkt )
@@ -140,42 +180,18 @@ always_comb
 assign bucket_wr_en = ( state == SCHEDULER_S ) ? ( scheduler_wr_en ):
                                                  ( update_wr_en    );
 
-assign update_wr_en = update_rd_en_d1 && flow_can_gen_pkt;
+assign pkt_size_rd_addr = scheduler_rd_addr;
+assign token_rd_addr    = update_rd_addr; 
 
-/*
-// update_proccess 
-always_ff @( posedge clk_i or posedge rst_i )
-  if( rst_i )
-    bucket_inc_rd_addr <= '0;
-  else
-    bucket_inc_rd_addr <= bucket_inc_rd_addr_next;
 
-always_comb
-  begin
-    bucket_inc_rd_addr_next = bucket_inc_rd_addr + 1'd1;
-
-    //for( int i = 0; i < FLOW_CNT; i++ )
-    //  begin
-    //    if( ( i > bucket_inc_rd_addr ) && flow_en[i] )
-    //      bucket_inc_rd_addr_next = i[FLOW_CNT_WIDTH-1:0];
-    //  end
-  end
-
-*/
-
-assign need_new_update = ( update_cnt == ( UPDATE_PERIOD - 1 ) );
-
-always_ff @( posedge clk_i or posedge rst_i )
-  if( rst_i )
-    update_cnt <= '0;
-  else
-    if( need_new_update )
-      update_cnt <= '0;
-    else
-      update_cnt <= update_cnt + 1'd1;
+// setting task
+assign task_flow_num_o = scheduler_rd_addr_d1; 
+assign task_pkt_size_o = rd_pkt_size;
+assign task_valid_o    = scheduler_wr_en;
+// FIXME: ready
 
 true_dual_port_ram_single_clock #( 
-  .DATA_WIDTH                             ( $bits( wr_size_size_i ) ),
+  .DATA_WIDTH                             ( $bits( wr_size_data_i ) ),
   .ADDR_WIDTH                             ( A_WIDTH                 ),
   .REGISTER_OUT                           ( 0                       )
 ) pkt_size_ram (
@@ -187,15 +203,15 @@ true_dual_port_ram_single_clock #(
   .q_a                                    (                   ),
 
   .addr_b                                 ( pkt_size_rd_addr  ),
-  .data_b                                 ( '0                ),
+  .data_b                                 ( 16'h0             ),
   .we_b                                   ( 1'b0              ),
   .q_b                                    ( rd_pkt_size       )
 );
 
 true_dual_port_ram_single_clock #( 
-  .DATA_WIDTH                             ( $bits( wr_token_token_i ) ),
-  .ADDR_WIDTH                             ( A_WIDTH ),
-  .REGISTER_OUT                           ( 0                       )
+  .DATA_WIDTH                             ( $bits( wr_token_data_i ) ),
+  .ADDR_WIDTH                             ( A_WIDTH                  ),
+  .REGISTER_OUT                           ( 0                        )
 ) token_ram (
   .clk                                    ( clk_i             ),
 
@@ -205,7 +221,7 @@ true_dual_port_ram_single_clock #(
   .q_a                                    (                   ),
 
   .addr_b                                 ( token_rd_addr     ),
-  .data_b                                 ( '0                ),
+  .data_b                                 ( 32'h0             ),
   .we_b                                   ( 1'b0              ),
   .q_b                                    ( rd_token          )
 );
@@ -223,7 +239,7 @@ true_dual_port_ram_single_clock #(
   .q_a                                    (                   ),
 
   .addr_b                                 ( bucket_rd_addr    ),
-  .data_b                                 ( '0                ),
+  .data_b                                 ( 32'h0             ),
   .we_b                                   ( 1'b0              ),
   .q_b                                    ( bucket_rd_data    )
 );

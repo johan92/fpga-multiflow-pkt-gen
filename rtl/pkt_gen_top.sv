@@ -31,12 +31,14 @@ typedef struct packed {
   logic  [15:0]               pkt_size;
 } task_t;
 
+
+task_t  task_w;
 logic   task_valid;
 logic   task_ready;
 
-task_t  task_w;
 task_t  rd_task;
-logic   rd_task_val;
+logic   rd_task_valid;
+logic   rd_task_ready;
 
 pkt_gen_task_engine #(
   .FLOW_CNT                               ( FLOW_CNT          )
@@ -70,9 +72,11 @@ logic fifo_rd_req;
 logic fifo_full;
 logic fifo_empty;
 
-assign fifo_wr_req = task_ready && task_valid;
-assign task_ready  = !fifo_full;
-assign rd_task_val = !fifo_empty;
+assign fifo_wr_req   = task_ready && task_valid;
+assign task_ready    = !fifo_full;
+
+assign rd_task_valid = !fifo_empty;
+assign fifo_rd_req   = rd_task_ready && rd_task_valid;
 
 gen_task_fifo #( 
   .DWIDTH                                 ( $bits( task_w )   ),
@@ -101,16 +105,15 @@ pkt_if #(
 );
 
 pkt_gen #(
-  .FLOW_CNT                               ( FLOW_CNT          ),
-  .FORCE_IDLE                             ( 1                 )
+  .FLOW_CNT                               ( FLOW_CNT          )
 ) pkt_gen (
   .clk_i                                  ( clk_i             ),
   .rst_i                                  ( rst_i             ),
    
-  .pkt_task_str_i                         ( rd_task.flow_num  ),
+  .pkt_task_flow_num_i                    ( rd_task.flow_num  ),
   .pkt_task_size_i                        ( rd_task.pkt_size  ),
-  .pkt_task_val_i                         ( rd_task_val       ),
-  .pkt_task_rd_req_o                      ( fifo_rd_req       ),
+  .pkt_task_valid_i                       ( rd_task_valid     ),
+  .pkt_task_ready_o                       ( rd_task_ready     ),
     
   .pkt_out                                ( pkt_gen_if        )
 );

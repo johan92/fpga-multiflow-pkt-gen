@@ -98,6 +98,7 @@ initial
     set_size( 1, 64 );
 
     set_token( 0, calc_l2_token( 7619.04 ) );
+    set_token( 1, calc_l2_token( 7619.04 ) );
 
     set_flow_en( 0, 1 );
     set_flow_en( 1, 1 );

@@ -1,6 +1,8 @@
 module pkt_gen_top #(
   parameter FLOW_CNT        = 16,
 
+  parameter SYS_CLK_FREQ    = 156.25,
+
   // internal parameter
   parameter FLOW_CNT_WIDTH  = ( FLOW_CNT == 1 ) ? ( 1 ) : $clog2( FLOW_CNT )
 )
@@ -91,8 +93,11 @@ gen_task_fifo #(
 );
 
 
-pkt_if pkt_gen_if( 
-  .clk( clk_i )
+pkt_if #( 
+  .FLOW_CNT     ( FLOW_CNT     ),
+  .SYS_CLK_FREQ ( SYS_CLK_FREQ ) 
+) pkt_gen_if ( 
+  .clk          ( clk_i )
 );
 
 pkt_gen #(

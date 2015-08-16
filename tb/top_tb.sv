@@ -20,7 +20,7 @@ bit                      wr_flow_en_data;
 bit                      wr_flow_en_wr_en;
 
 
-always #5ns clk = !clk;
+always #3.2ns clk = !clk;
 
 clocking cb @( posedge clk );
 endclocking
@@ -72,14 +72,32 @@ task set_flow_en( input int _addr, bit _flow_en );
   wr_flow_en_wr_en <= 1'b0;
 endtask
 
+localparam DWIDTH               = 64;
+localparam SYS_CLK_FREQ         = 156.25;
+localparam MAX_L1_RATE          = SYS_CLK_FREQ * DWIDTH;
+localparam UPDATE_PERIOD        = 100; 
+localparam MAX_L1_IN_ONE_PERIOD = UPDATE_PERIOD * DWIDTH;
+localparam PERIODS_IN_SEC       = SYS_CLK_FREQ * 1_000_000 / UPDATE_PERIOD;
+
+function int calc_l2_token( input real l2_rate_mbps );
+  real bytes_in_period;
+  int token;
+
+  bytes_in_period = l2_rate_mbps * 1.0 / 8.0 * 1_000_000 / PERIODS_IN_SEC;
+  token = $ceil( bytes_in_period );
+
+  $display("%m: l2_rate_mbps = %f bytes_in_period = %f token = %d", 
+                l2_rate_mbps,     bytes_in_period,      token);
+  return token;
+endfunction
+
 initial
   begin
     wait( rst_done );
-    set_size( 0, 64  );
-    set_size( 1, 100 );
+    set_size( 0, 64 );
+    set_size( 1, 64 );
 
-    set_token( 0, 150 );
-    set_token( 1, 380 );
+    set_token( 0, calc_l2_token( 7619.04 ) );
 
     set_flow_en( 0, 1 );
     set_flow_en( 1, 1 );
@@ -87,7 +105,8 @@ initial
 
 
 pkt_gen_top #(
-  .FLOW_CNT                               ( FLOW_CNT        )
+  .FLOW_CNT                               ( FLOW_CNT        ),
+  .SYS_CLK_FREQ                           ( 156.25          )
 ) gen_task_top (
   .clk_i                                  ( clk             ),
   .rst_i                                  ( rst             ),

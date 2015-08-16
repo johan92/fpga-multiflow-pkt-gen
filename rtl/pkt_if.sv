@@ -45,9 +45,14 @@ modport slave(
 //endclocking
 
 int  tick_cnt;
+
 int  cur_bytes_l1;
-int  flow_total_bytes_cnt [FLOW_CNT-1:0];
-real flow_l1_rate         [FLOW_CNT-1:0];
+int  flow_total_l1_bytes_cnt [FLOW_CNT-1:0];
+real flow_l1_rate            [FLOW_CNT-1:0];
+
+int  cur_bytes_l2;
+int  flow_total_l2_bytes_cnt [FLOW_CNT-1:0];
+real flow_l2_rate            [FLOW_CNT-1:0];
 
 initial
   begin
@@ -56,15 +61,28 @@ initial
         tick_cnt = tick_cnt + 1'd1;
         
         // 20 - IFG ( 12 IDLE + 8 Preamble )
-        cur_bytes_l1 = val ? ( eop ? ( D_WIDTH - empty + 20 ) : ( D_WIDTH ) ) : ( 0 );
+        cur_bytes_l1 = val ? ( eop ? ( D_WIDTH/8 - empty + 20 ) : ( D_WIDTH/8 ) ) : ( 0 );
+        
+        cur_bytes_l2 = val ? ( eop ? ( D_WIDTH/8 - empty ) : ( D_WIDTH/8 ) ) : ( 0 );
 
-        flow_total_bytes_cnt[ flow_num ] += cur_bytes_l1;
+        flow_total_l1_bytes_cnt[ flow_num ] += cur_bytes_l1;
+        flow_total_l2_bytes_cnt[ flow_num ] += cur_bytes_l2;
 
         for( int i = 0; i < FLOW_CNT; i++ )
           begin
-            flow_l1_rate[i] = SYS_CLK_FREQ * 8 * 1.0 * flow_total_bytes_cnt[i] / tick_cnt;
+            flow_l1_rate[i] = SYS_CLK_FREQ * 8 * 1.0 * flow_total_l1_bytes_cnt[i] / tick_cnt;
+            flow_l2_rate[i] = SYS_CLK_FREQ * 8 * 1.0 * flow_total_l2_bytes_cnt[i] / tick_cnt;
           end
-
+        
+        if( ( tick_cnt % 10000 ) == 0 )
+          begin
+            for( int i = 0; i < FLOW_CNT; i++ )
+              begin
+                if( ( flow_l1_rate[i] > 0 ) && 
+                    ( flow_l2_rate[i] > 0 ) )
+                  $display("%10t: FLOW: %3d L1: %5.5f L2: %5.5f", $time(), i, flow_l1_rate[i], flow_l2_rate[i] );
+              end
+          end
         @( posedge clk );
       end
   end

@@ -2,6 +2,8 @@ module pkt_gen_top #(
   parameter FLOW_CNT        = 16,
 
   parameter SYS_CLK_FREQ    = 156.25,
+  
+  parameter UPDATE_PERIOD   = 100,
 
   // internal parameter
   parameter FLOW_CNT_WIDTH  = ( FLOW_CNT == 1 ) ? ( 1 ) : $clog2( FLOW_CNT )
@@ -31,7 +33,6 @@ typedef struct packed {
   logic  [15:0]               pkt_size;
 } task_t;
 
-
 task_t  task_w;
 logic   task_valid;
 logic   task_ready;
@@ -41,7 +42,8 @@ logic   rd_task_valid;
 logic   rd_task_ready;
 
 pkt_gen_task_engine #(
-  .FLOW_CNT                               ( FLOW_CNT          )
+  .FLOW_CNT                               ( FLOW_CNT          ),
+  .UPDATE_PERIOD                          ( UPDATE_PERIOD     )
 ) pkt_gen_task_engine (
   .clk_i                                  ( clk_i             ),
   .rst_i                                  ( rst_i             ),

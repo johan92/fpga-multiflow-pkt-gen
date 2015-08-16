@@ -94,20 +94,29 @@ endfunction
 initial
   begin
     wait( rst_done );
-    set_size( 0, 64 );
-    set_size( 1, 64 );
-
-    set_token( 0, calc_l2_token( 7619.04 ) );
-    set_token( 1, calc_l2_token( 7619.04 ) );
-
-    set_flow_en( 0, 1 );
-    set_flow_en( 1, 1 );
+    set_size( 0, 64   );
+    set_size( 1, 128  );
+    set_size( 2, 256  );
+    set_size( 3, 512  );
+    set_size( 4, 1024 );
+    set_size( 5, 1500 );
+    
+    for( int i = 0; i < 6; i++ )
+      begin
+        set_token( i, calc_l2_token( 1000.00 ) );
+      end
+    
+    for( int i = 0; i < 6; i++ )
+      begin
+        set_flow_en( i, 1 );
+      end
   end
 
 
 pkt_gen_top #(
   .FLOW_CNT                               ( FLOW_CNT        ),
-  .SYS_CLK_FREQ                           ( 156.25          )
+  .SYS_CLK_FREQ                           ( SYS_CLK_FREQ    ),
+  .UPDATE_PERIOD                          ( UPDATE_PERIOD   )
 ) gen_task_top (
   .clk_i                                  ( clk             ),
   .rst_i                                  ( rst             ),

@@ -151,7 +151,6 @@ always_ff @( posedge clk_i or posedge rst_i )
     else
       update_cnt <= update_cnt + 1'd1;
 
-
 // COMMON
 assign bucket_rd_addr = ( state == SCHEDULER_S ) ? ( scheduler_rd_addr ):
                                                    ( update_rd_addr    );
@@ -182,7 +181,6 @@ assign bucket_wr_en = ( state == SCHEDULER_S ) ? ( scheduler_wr_en ):
 
 assign pkt_size_rd_addr = scheduler_rd_addr;
 assign token_rd_addr    = update_rd_addr; 
-
 
 // setting task
 assign task_flow_num_o = bucket_rd_addr_d1; 
